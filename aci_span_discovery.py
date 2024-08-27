@@ -15,6 +15,7 @@ import argparse
 import sys
 import re
 import pprint
+import getpass
 
 # Disable warnings for insecure requests
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
@@ -450,6 +451,8 @@ def load_config(file_path):
     try:
         with open(file_path, 'r') as file:
             return json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
     except Exception as e:
         raise Exception(f'Failed to load configuration from {file_path}: {e}')
 
@@ -472,9 +475,10 @@ def main():
         # Load Variables from File
         config = load_config('config.json')
 
-        apic_url = config['apic_url']
-        username = config['username']
-        password = config['password']
+        apic_ip = config.get('apic_ip') or input('Enter APIC IP/Hostname: ')
+        apic_url = f'https://{apic_ip}'
+        username = config.get('username') or input('Enter APIC username: ')
+        password = config.get('password') or getpass.getpass(prompt='Enter APIC password: ')
 
         # Initialize APIC client
         client = APICClient(apic_url, username, password)
