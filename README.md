@@ -4,10 +4,16 @@ This project provides a set of tools to interact with Cisco ACI (Application Cen
 
 ## Features
 
-- Authenticate with the APIC
-- Retrieve and map EPG to BD, VLAN, Subnet, and VRF
-- Retrieve and analyze active ports, VPC members, and SPAN sources
-- Evaluate SPAN configuration and generate a detailed report
+- **Authentication**: Authenticate with the APIC using provided credentials.
+- **EPG to BD Mapping**: Retrieve and map End Point Groups (EPGs) to Bridge Domains (BDs).
+- **EPG to VLAN Mapping**: Retrieve and map EPGs to VLANs.
+- **BD to Subnet Mapping**: Retrieve and map BDs to Subnets.
+- **BD to VRF Mapping**: Retrieve and map BDs to VRFs.
+- **Active Ports**: Retrieve active ports that are not fabric or span destinations.
+- **VPC Members**: Retrieve Virtual Port Channel (VPC) member interfaces.
+- **SPAN Sources**: Retrieve SPAN sources or ports to exclude in the analysis.
+- **SPAN Destinations**: Retrieve SPAN destinations or ports to exclude in the analysis.
+- **SPAN Configuration Evaluation**: Evaluate the SPAN configuration of the fabric and generate a detailed report.
 
 ## Requirements
 
@@ -29,14 +35,15 @@ This project provides a set of tools to interact with Cisco ACI (Application Cen
     pip install requests pandas argparse
     ```
 
-3. Create a `config.json` file with the following structure:
+3. Optionally, create a `config.json` file with the following structure:
     ```json
     {
-        "apic_url": "https://your-apic-url",
+        "apic_ip": "your-apic-ip-or-hostname",
         "username": "your-username",
         "password": "your-password"
     }
     ```
+   - The `config.json` file is optional. If it is not provided, or if any of the fields (`apic_ip`, `username`, `password`) are missing, the script will prompt you to enter them.
 
 ## Usage
 
@@ -86,7 +93,7 @@ python aci_span_discovery.py --fabric fabric_results.csv --span span_results.csv
 - **`load_config(file_path)`**: Load configuration from a JSON file.
 - **`main()`**: Main function to load configuration, initialize APIC client, and perform discovery.
 
-## Output
+## Example Output
 
 The output of the script will be saved as CSV files specified in the command line arguments. The CSV files will contain detailed information about the fabric and SPAN configurations.
 
