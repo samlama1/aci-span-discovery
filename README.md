@@ -1,4 +1,3 @@
-```markdown
 # ACI SPAN Discovery
 
 This project provides a set of tools to interact with Cisco ACI (Application Centric Infrastructure) APIC (Application Policy Infrastructure Controller) to gather and analyze SPAN (Switched Port Analyzer) information. The script performs multiple API calls to the APICs to gather information about EPGs, BDs, VLANs, Subnets, VRFs, and SPAN configurations.
