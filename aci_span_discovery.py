@@ -130,10 +130,15 @@ class APICClient:
                 attributes = item['fvSubnet']['attributes']
                 subnet = attributes['dn']
                 ip = attributes['ip']
-                bd = re.search(r'(uni/tn-[^/]+/BD-[^/]+)', subnet).group(1)
+                match = re.search(r'(uni/tn-[^/]+/BD-[^/]+)', subnet)
+                if match:
+                    bd = match.group(1)
+                else:
+                    bd = ''
 
                 # Add the combination to the dictionary
                 results[bd] = (subnet, ip)
+                #exit()
 
             # Print results
             for bd, (subnet, ip) in results.items():
@@ -175,7 +180,6 @@ class APICClient:
         try:
             data = self.class_lookup('topSystem', f'query-target-filter=and(eq(topSystem.role,"leaf"),eq(topSystem.state,"in-service"))')
             results = {}
-            pprint.pprint(data)
             for item in data:
                 if item['topSystem']['attributes']['state'] == 'in-service': 
                     site_id = item['topSystem']['attributes']['siteId']
@@ -215,7 +219,7 @@ class APICClient:
                 print(f"+++ pod: {pod_id}, node: {node_id}, port: {port}, description: {desc}")
             return results
         except Exception as e:
-            raise Exception(f'Failed to retrieve the span configuration: {e}')
+            raise Exception(f'Failed to retrieve the span destinations: {e}')
 
     def span_sources(self):
         """
@@ -228,7 +232,7 @@ class APICClient:
             for item in data:
                 pod_id = re.search(r'(topology/pod-([^/]+)/)', item[class_or_object]['attributes']['tDn']).group(2)
                 node_id = re.search(r'(topology/pod-[^/]+/paths-([^/]+)/)', item[class_or_object]['attributes']['tDn']).group(2)
-                port_or_vpcname = re.search(r'(topology/pod-[^/]+/paths-[^/]+/pathep-\[([^\]]+)\])', item[class_or_object]['attributes']['tDn']).group(2)
+                port_or_vpcname = re.search(r'(topology/pod-[^/]+/paths-[^/]+(/extpaths-[^/]+)?/pathep-\[([^\]]+)\])', item[class_or_object]['attributes']['tDn']).group(2)
                 # Add the combination to the dictionary
                 results[(pod_id, node_id, port_or_vpcname)] = None
 
@@ -238,7 +242,7 @@ class APICClient:
 
             return results
         except Exception as e:
-            raise Exception(f'Failed to retrieve the span configuration: {e}')
+            raise Exception(f'Failed to retrieve the span source configuration: {e}')
 
     def vpc_members(self):
         """
@@ -308,10 +312,6 @@ class APICClient:
             epg_vlans = self.epg_vlans()
             bd_subnets = self.bd_subnets()
             bd_vrf = self.bd_vrf()
-            pprint.pprint(epg_bd)
-            pprint.pprint(epg_vlans)
-            pprint.pprint(bd_subnets)
-            pprint.pprint(bd_vrf)
 
             # Initialize a list to hold the merged information
             merged_list = []
@@ -337,6 +337,9 @@ class APICClient:
             # Convert the merged list to a Pandas DataFrame
             df = pd.DataFrame(merged_list)
 
+            # Sort the DataFrame
+            df = df.sort_values(by=['Tenant', 'AP', 'VRF', 'EPG'])
+
             # Print the DataFrame
             print(df)
 
@@ -353,11 +356,6 @@ class APICClient:
             interfaces = self.active_ports()
             vpc_members = self.vpc_members()
             span_sources = self.span_sources()
-
-            pprint.pprint(nodes)
-            pprint.pprint(interfaces)
-            pprint.pprint(vpc_members)
-            pprint.pprint(span_sources)
 
             # List to hold merged results
             merged_list = []
