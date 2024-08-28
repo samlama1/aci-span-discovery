@@ -279,13 +279,14 @@ class APICClient:
         Retrieve the active ports that are not fabric or span destinations.
         """
         try:
+            # Get the list of active ports
             class_or_object = 'ethpmPhysIf'
             data = self.class_lookup(class_or_object, f'query-target-filter=and(eq(ethpmPhysIf.bundleIndex,"unspecified"),'
-                                     f'eq(ethpmPhysIf.operSt,"up"),'
-                                     f'ne(ethpmPhysIf.usage,"fabric"),'
-                                     f'ne(ethpmPhysIf.usage,"discovery"),'
-                                     f'ne(ethpmPhysIf.usage,"span"))&order-by=ethpmPhysIf.dn|desc')
-            results = {}
+                                                    f'eq(ethpmPhysIf.operSt,"up"),'
+                                                    f'ne(ethpmPhysIf.usage,"fabric"),'
+                                                    f'ne(ethpmPhysIf.usage,"discovery"),'
+                                                    f'ne(ethpmPhysIf.usage,"span"))&order-by=ethpmPhysIf.dn|desc')
+            port_status = {}
             for item in data:
                 pod_id = re.search(r'(topology/pod-([^/]+)/)', item[class_or_object]['attributes']['dn']).group(2)
                 node_id = re.search(r'(topology/pod-[^/]+/node-([^/]+)/)', item[class_or_object]['attributes']['dn']).group(2)
@@ -293,13 +294,33 @@ class APICClient:
                 usage = item[class_or_object]['attributes']['usage']
                 mode = item[class_or_object]['attributes']['operMode']
                 vlan = item[class_or_object]['attributes']['allowedVlans']
-                # Add the combination to the dictionary
-                results[(pod_id, node_id, port, usage, mode, vlan)] = None
+                # Add the combination to the dictionary with a placeholder for description
+                port_status[(pod_id, node_id, port)] = {'usage': usage, 'mode': mode, 'vlan': vlan, 'descr': None}
 
-            # Print results
-            for (pod_id, node_id, port, usage, mode, vlan), _ in results.items():
-                print(f"+++ pod: {pod_id}, node: {node_id}, port: {port}, usage: {usage}, mode: {mode}, vlan: {vlan}")
-            return results
+            # Get the descriptions
+            class_or_object = 'l1PhysIf'
+            data = self.class_lookup(class_or_object, f'query-target-filter=and(eq(l1PhysIf.adminSt,"up"),'
+                                                    f'ne(l1PhysIf.descr,""))&order-by=l1PhysIf.dn|desc')
+            port_desc = {}
+            for item in data:
+                pod_id = re.search(r'(topology/pod-([^/]+)/)', item[class_or_object]['attributes']['dn']).group(2)
+                node_id = re.search(r'(topology/pod-[^/]+/node-([^/]+)/)', item[class_or_object]['attributes']['dn']).group(2)
+                port = re.search(r'(topology/pod-[^/]+/node-[^/]+/sys/phys-\[([^/]+/[^/]+(?:/[^/]+)?)\])', item[class_or_object]['attributes']['dn']).group(2)
+                descr = item[class_or_object]['attributes']['descr']
+                # Add the combination to the dictionary
+                port_desc[(pod_id, node_id, port)] = descr
+
+            # Create a new dictionary to combine port_status and port_desc
+            combined_port_info = {}
+            for (pod_id, node_id, port), details in port_status.items():
+                descr = port_desc.get((pod_id, node_id, port), "")
+                combined_port_info[(pod_id, node_id, port, details['usage'], details['mode'], details['vlan'], descr)] = None
+
+            # Print combined results
+            for (pod_id, node_id, port, usage, mode, vlan, descr), _ in combined_port_info.items():
+                print(f"+++ pod: {pod_id}, node: {node_id}, port: {port}, usage: {usage}, mode: {mode}, vlan: {vlan}, descr: {descr}")
+
+            return combined_port_info
         except Exception as e:
             raise Exception(f'Failed to retrieve the active port configurations: {e}')
 
@@ -381,7 +402,7 @@ class APICClient:
 
             # Merge interfaces and vpc_members, and check span_sources
             for key in interfaces:
-                pod_id, node_id, port, usage, mode, vlan = key
+                pod_id, node_id, port, usage, mode, vlan, descr = key
                 if (pod_id, node_id) in nodes_lookup:
                     node_info = nodes_lookup[(pod_id, node_id)]
                     merged_entry = {
@@ -393,7 +414,8 @@ class APICClient:
                         'port': port,
                         'usage': usage,
                         'mode': mode,
-                        'vlan': vlan
+                        'vlan': vlan,
+                        'descr': descr
                     }
                     # Add VPC information if available
                     if (pod_id, node_id, port) in vpc_lookup:
